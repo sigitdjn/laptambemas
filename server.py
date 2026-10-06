@@ -74,14 +74,34 @@ class Handler(BaseHTTPRequestHandler):
                 if self.path=='/api/projects':
                     if not d['name'].strip(): raise ValueError('Nama proyek wajib diisi')
                     c.execute('INSERT INTO projects(name) VALUES(?)',(d['name'].strip(),))
-                elif self.path=='/api/entries':
+                elif self.path=='/api/delete':
+                    if u['role']!='admin': return self.reply({'error':'Hanya admin dapat menghapus catatan'},403)
+                    c.execute('BEGIN IMMEDIATE')
+                    r=c.execute('SELECT * FROM entries WHERE id=?',(d['id'],)).fetchone()
+                    if not r: return self.reply({'error':'Catatan tidak ditemukan'},404)
+                    if r['settled'] or r['category']=='Pelunasan': raise ValueError('Catatan pelunasan dan catatan yang sudah lunas dikunci.')
+                    c.execute('DELETE FROM entries WHERE id=?',(r['id'],))
+                elif self.path in ['/api/entries','/api/edit']:
+                    if self.path=='/api/edit':
+                        if u['role']!='admin': return self.reply({'error':'Hanya admin dapat mengedit catatan'},403)
+                        c.execute('BEGIN IMMEDIATE')
+                        r=c.execute('SELECT * FROM entries WHERE id=?',(d['id'],)).fetchone()
+                        if not r: return self.reply({'error':'Catatan tidak ditemukan'},404)
+                        if r['settled'] or r['category']=='Pelunasan': raise ValueError('Catatan pelunasan dan catatan yang sudah lunas dikunci.')
+                        if d['project_id']!=r['project_id']: raise ValueError('Proyek catatan tidak dapat dipindahkan')
                     from datetime import date
                     if d['kind'] not in ['income','expense','debt','receivable','asset']: raise ValueError('Jenis tidak valid')
                     date.fromisoformat(d['date'])
                     if d.get('due'): date.fromisoformat(d['due'])
                     if not d['description'].strip() or isinstance(d['amount'],bool) or int(d['amount'])!=d['amount'] or d['amount']<=0: raise ValueError('Keterangan dan nominal rupiah positif wajib diisi')
-                    c.execute('INSERT INTO entries(project_id,kind,date,description,category,amount,party,due,created_by) VALUES(?,?,?,?,?,?,?,?,?)',(d['project_id'],d['kind'],d['date'],d['description'].strip(),d['category'],d['amount'],d.get('party',''),d.get('due',''),u['id']))
+                    if d['category']=='Pelunasan': raise ValueError('Kategori Pelunasan hanya untuk transaksi otomatis')
+                    values=(d['kind'],d['date'],d['description'].strip(),d['category'],d['amount'],d.get('party',''),d.get('due',''))
+                    if self.path=='/api/edit':
+                        c.execute('UPDATE entries SET kind=?,date=?,description=?,category=?,amount=?,party=?,due=? WHERE id=?',(*values,r['id']))
+                    else:
+                        c.execute('INSERT INTO entries(project_id,kind,date,description,category,amount,party,due,created_by) VALUES(?,?,?,?,?,?,?,?,?)',(d['project_id'],*values,u['id']))
                 elif self.path=='/api/settle':
+                    c.execute('BEGIN IMMEDIATE')
                     r=c.execute('SELECT * FROM entries WHERE id=?',(d['id'],)).fetchone()
                     if not r or r['kind'] not in ['debt','receivable'] or r['settled']: raise ValueError('Catatan sudah lunas atau tidak valid')
                     from datetime import date

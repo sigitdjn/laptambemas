@@ -17,7 +17,7 @@ Database SQLite tersimpan di `.data/finance.sqlite3`, bukan di Git. `DATA_DIR` d
 - Filter bulan berlaku untuk transaksi dan daftar laporan. Kartu saldo, hutang/piutang belum lunas, dan nilai aset menampilkan posisi seluruh periode.
 - Hutang/piutang adalah daftar kewajiban/tagihan, bukan otomatis transaksi kas. Penerimaan pinjaman dicatat juga sebagai uang masuk. Pelunasan penuh otomatis menambah transaksi kas, hanya sekali.
 - Aset menggunakan nilai perolehan; pembelian aset dicatat juga sebagai uang keluar. Penyusutan, penjualan aset, pembayaran sebagian, dan pembukuan akuntansi lengkap belum tersedia.
-- Catatan bersifat tambah saja, tanpa hapus/edit. Periksa data sebelum menyimpan.
+- Admin dapat mengedit dan menghapus catatan melalui kolom Aksi pada tabel. Hapus memerlukan konfirmasi dan saldo otomatis dihitung ulang. Anggota tetap dapat melihat dan menambah; edit/hapus ditolak oleh server. Catatan hutang/piutang yang sudah lunas dan transaksi kategori Pelunasan dikunci untuk menjaga konsistensi arus kas. Data lama tetap tersimpan; tidak ada migrasi atau penghapusan database.
 
 ## Pengujian
 ```sh
